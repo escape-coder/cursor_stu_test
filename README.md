@@ -298,3 +298,67 @@ python -m pip --version  # 当前 pip 对应的环境
 ### 本项目建议
 - 若你只是运行/学习本项目：使用 **venv** 更轻量、足够用。
 - 若你已在数据科学工作流中：使用 **conda** 更方便管理复杂依赖。
+
+## Git 基础：`git fetch` 指令
+
+### 是什么
+- **git fetch**：从远程仓库下载最新的引用信息（分支、标签、提交对象），更新到本地的远程跟踪分支（如 `origin/main`），但**不会自动合并到你当前分支**，也**不会改变工作区/暂存区**。
+
+### 和 `git pull` 的区别
+- `git fetch`：只下载、更新远程跟踪分支，不修改当前分支。
+- `git pull`：等价于 `git fetch` + `git merge`（或 `git rebase`，取决于配置），会将远程更新合并到当前分支。
+
+### 为什么用
+- 先获取远程最新进度，随后再决定如何合并（`merge`/`rebase`/`cherry-pick`）。
+- 安全、可控，不会意外改动本地分支。
+
+### 常用命令
+```bash
+# 获取默认远程（通常为 origin）所有更新（分支、标签、对象）
+git fetch
+
+# 仅获取指定远程
+git fetch origin
+
+# 获取指定远程的指定分支
+git fetch origin main
+
+# 获取所有远程
+git fetch --all
+
+# 获取并清理远程已删除的分支（同步本地远程跟踪分支状态）
+git fetch -p        # 等同于 --prune
+
+# 获取标签
+git fetch --tags
+
+# 浅获取（加速、减少历史体积）
+git fetch --depth=1
+```
+
+### 常见工作流示例
+```bash
+# 1) 先获取远程最新进度
+git fetch origin
+
+# 2) 查看远程跟踪分支的最新提交
+git log --oneline origin/main -n 10
+
+# 3) 决定如何把远程变更合并到当前分支
+git merge origin/main          # 生成 merge commit（默认）
+# 或
+git rebase origin/main         # 线性历史（根据团队规范选择）
+```
+
+### 查看远程与本地状态
+```bash
+git remote -v                  # 查看远程地址
+git branch -vv                 # 查看本地分支与其跟踪的远程分支及落后/超前情况
+git log HEAD..origin/main      # 查看你落后远程的提交
+git log origin/main..HEAD      # 查看你领先远程的提交
+```
+
+### 小贴士
+- 先 `git fetch`，再决定 `merge` 或 `rebase`，更可控。
+- 定期使用 `git fetch -p` 清理远程已删除的分支映射。
+- 大仓库或网络慢时，用 `--depth` 做浅获取；需要时再加深历史。
