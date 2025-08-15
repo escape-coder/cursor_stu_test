@@ -362,3 +362,151 @@ git log origin/main..HEAD      # 查看你领先远程的提交
 - 先 `git fetch`，再决定 `merge` 或 `rebase`，更可控。
 - 定期使用 `git fetch -p` 清理远程已删除的分支映射。
 - 大仓库或网络慢时，用 `--depth` 做浅获取；需要时再加深历史。
+
+## Git 常用指令（团队协作）
+
+### 基础配置与身份
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+git config --global core.autocrlf input         # 跨平台换行（mac/linux）
+git config --global core.autocrlf true          # 跨平台换行（Windows）
+git config --list
+```
+
+### 仓库与基础操作
+```bash
+git init                                         # 初始化仓库
+git clone <repo-url> [dir]                       # 克隆仓库
+git status                                       # 查看状态
+git add <file> | .                               # 添加变更到暂存区
+git commit -m "feat: message"                    # 提交
+git log --oneline --graph --decorate --all       # 美观日志
+git diff [--staged]                              # 查看差异（工作区/暂存区）
+```
+
+### 分支管理
+```bash
+git branch                                       # 列出本地分支
+git branch -r                                    # 列出远程分支
+git branch -a                                    # 本地+远程
+git branch <new-branch>                          # 创建分支
+git switch <branch>                              # 切换分支（推荐）
+git switch -c <new-branch>                       # 创建并切换
+git branch -d <branch>                           # 删除已合并分支
+git branch -D <branch>                           # 强制删除
+git branch -m <new-name>                         # 重命名当前分支
+```
+
+### 远程与同步
+```bash
+git remote -v                                    # 查看远程
+git remote add origin <repo-url>                 # 添加远程
+git remote set-url origin <repo-url>             # 更新远程地址
+
+git fetch [origin] [branch] [--prune]            # 获取远程更新（不合并）
+git pull                                         # fetch + merge（默认）
+git pull --rebase                                # fetch + rebase（线性历史）
+git push                                         # 推送当前分支（已设置 upstream）
+git push -u origin <branch>                      # 首次推送并建立跟踪
+git push --tags                                  # 推送标签
+```
+
+### 合并、变基与冲突处理
+```bash
+# 合并（产生 merge commit）
+git merge <branch>
+
+# 线性历史（把当前分支变基到目标分支之上）
+git rebase <upstream-branch>
+git rebase --continue | --abort | --skip
+
+# 解决冲突流程
+# 1) pull/rebase/merge 时产生冲突
+# 2) 编辑冲突文件并解决冲突标记
+git add <resolved-files>
+git commit        # 若为 merge 冲突
+git rebase --continue  # 若为 rebase 冲突
+
+# 可视化辅助
+git mergetool
+```
+
+### 暂存现场（stash）
+```bash
+git stash push -m "WIP: message"                 # 保存当前未提交修改
+git stash list                                   # 查看
+git stash show -p stash@{0}                      # 查看具体差异
+git stash apply stash@{0}                        # 应用（保留记录）
+git stash pop                                    # 应用并删除记录
+git stash drop stash@{0}                         # 删除某条记录
+```
+
+### 标签（发布标记）
+```bash
+git tag                                          # 列出标签
+git tag v1.0.0                                   # 轻量标签
+git tag -a v1.0.0 -m "release 1.0.0"            # 附注标签（推荐）
+git push origin v1.0.0                           # 推送某标签
+git push --tags                                  # 推送所有标签
+```
+
+### 回滚、恢复与“后悔药”
+```bash
+git restore <file>                               # 恢复工作区文件为最新提交
+git restore --staged <file>                      # 从暂存区撤回到工作区
+
+# 重置提交（危险操作，谨慎使用）
+git reset --soft <commit>    # 回退提交，保留暂存区与工作区变更
+git reset --mixed <commit>   # 回退提交与暂存，保留工作区（默认）
+git reset --hard <commit>    # 回退并丢弃一切未提交变更
+
+# 误操作救援
+git reflog                                       # 查看 HEAD 变更历史
+git checkout <lost-commit>                        # 找回遗失提交
+git cherry-pick <commit>                         # 拣选特定提交到当前分支
+```
+
+### 清理
+```bash
+git clean -fd                                    # 清理未跟踪文件/目录（危险）
+git gc --prune=now --aggressive                  # 垃圾回收与压缩仓库
+```
+
+### 团队协作推荐工作流（Feature Branch + PR）
+```bash
+# 1) 更新主分支（main）
+git switch main
+git fetch origin --prune
+git pull --rebase origin main
+
+# 2) 基于主分支创建功能分支
+git switch -c feat/sort-animation
+
+# 3) 编码、提交（小步提交、规范信息）
+git add .
+git commit -m "feat(animation): add bubble sort animation"
+
+# 4) 与远程保持同步（避免大冲突）
+git fetch origin
+git rebase origin/main     # 或 merge，根据团队规范
+
+# 5) 推送并创建 PR
+git push -u origin feat/sort-animation
+# 在平台（GitHub/GitLab）创建合并请求，完成 Code Review
+
+# 6) 合并后清理分支
+git switch main
+git pull --rebase origin main
+git branch -d feat/sort-animation
+git push origin --delete feat/sort-animation  # 远程删除（可选）
+```
+
+### 团队最佳实践
+- 小步提交，信息规范（如 `feat: ...`、`fix: ...`、`docs: ...`）。
+- 在合并前保持分支最新：`git fetch` + `git rebase origin/main`。
+- 避免对共享分支强推：不要在 `main/dev/release` 上 `git push -f`。
+- 保护主分支：启用受保护分支、必须通过 CI、必须 Review。
+- 使用 `.gitignore` 正确忽略构建产物、临时文件、私密配置。
+- 在跨平台团队中统一换行策略（`core.autocrlf`）。
+- 对于大型二进制/模型文件，考虑 Git LFS 或工件仓库。
